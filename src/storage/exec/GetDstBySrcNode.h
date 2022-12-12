@@ -30,7 +30,8 @@ class GetDstBySrcNode : public QueryNode<VertexID> {
       if (context_->isIntId()) {
         uint64_t id = 0;
         for (auto it = vId.rbegin(); it != vId.rend(); it++) {
-          id = id * 256 + *it;
+          uint8_t v = (uint8_t)(*it);
+          id = id * 256 + v;
         }
         LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode]: partId: " << partId << " vId: " << id;
       } else {
@@ -56,9 +57,12 @@ class GetDstBySrcNode : public QueryNode<VertexID> {
 
  private:
   nebula::cpp2::ErrorCode iterateEdges() {
+    LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode-iterateEdges] start";
     for (auto& edge_name : edgeContext_->edgeNames_) {
+      auto id = edge_name.first;
       auto name = edge_name.second;
-      LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode]: edge type name: " << name;
+      LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode-iterateEdges]: edge type id: " << id
+                << "edge type name: " << name;
     }
 
     for (; iter_->valid(); iter_->next()) {

@@ -27,7 +27,7 @@ class RocksRangeIter : public KVIterator {
  public:
   RocksRangeIter(rocksdb::Iterator* iter, rocksdb::Slice start, rocksdb::Slice end, size_t vIdLen)
       : iter_(iter), start_(start), end_(end), vIdLen_(vIdLen) {
-    LOG(INFO) << "[qy-profiling]-[RocksRangeIter] vIdLen: " << vIdLen_;
+    LOG(INFO) << "[qy-profiling]-[RocksRangeIter-create] vIdLen: " << vIdLen_;
     if (vIdLen_ > 0) {
       if (iter_->Valid()) {
         auto key = this->key();
@@ -47,10 +47,12 @@ class RocksRangeIter : public KVIterator {
           if (vIdLen_ == 8) {
             uint64_t src_id = 0, dst_id = 0;
             for (auto it = src.rbegin(); it != src.rend(); it++) {
-              src_id = src_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              src_id = src_id * 256 + v;
             }
             for (auto it = dst.rbegin(); it != dst.rend(); it++) {
-              dst_id = dst_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              dst_id = dst_id * 256 + v;
             }
             src = std::to_string(src_id);
             dst = std::to_string(dst_id);
@@ -72,10 +74,10 @@ class RocksRangeIter : public KVIterator {
   }
 
   ~RocksRangeIter() {
-    LOG(INFO) << "[qy-profiling]-[RocksRangeIter] vIdLen: " << vIdLen_;
+    LOG(INFO) << "[qy-profiling]-[RocksRangeIter-finish] vIdLen: " << vIdLen_;
     if (vIdLen_ > 0) {
+      iter_->Prev();  // move to last key
       if (iter_->Valid()) {
-        iter_->Prev();  // move to last key
         auto key = this->key();
         if (NebulaKeyUtils::isTag(vIdLen_, key)) {
           auto partid = NebulaKeyUtils::getPart(key);
@@ -93,10 +95,12 @@ class RocksRangeIter : public KVIterator {
           if (vIdLen_ == 8) {
             uint64_t src_id = 0, dst_id = 0;
             for (auto it = src.rbegin(); it != src.rend(); it++) {
-              src_id = src_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              src_id = src_id * 256 + v;
             }
             for (auto it = dst.rbegin(); it != dst.rend(); it++) {
-              dst_id = dst_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              dst_id = dst_id * 256 + v;
             }
             src = std::to_string(src_id);
             dst = std::to_string(dst_id);
@@ -151,7 +155,7 @@ class RocksPrefixIter : public KVIterator {
  public:
   RocksPrefixIter(rocksdb::Iterator* iter, rocksdb::Slice prefix, size_t vIdLen)
       : iter_(iter), prefix_(prefix), vIdLen_(vIdLen) {
-    LOG(INFO) << "[qy-profiling]-[RocksPrefixIter] vIdLen: " << vIdLen_;
+    LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] vIdLen: " << vIdLen_;
     if (vIdLen_ > 0) {
       if (iter_->Valid()) {
         auto key = this->key();
@@ -159,9 +163,8 @@ class RocksPrefixIter : public KVIterator {
           auto partid = NebulaKeyUtils::getPart(key);
           auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
           auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
-          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator point to vertex. prefix: "
-                    << prefix_.data() << ", partid: " << partid << ", tagid: " << tag
-                    << ", vid: " << vid;
+          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator point to vertex. partid: "
+                    << partid << ", tagid: " << tag << ", vid: " << vid;
         } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
           auto partid = NebulaKeyUtils::getPart(key);
           auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
@@ -171,43 +174,40 @@ class RocksPrefixIter : public KVIterator {
           if (vIdLen_ == 8) {
             uint64_t src_id = 0, dst_id = 0;
             for (auto it = src.rbegin(); it != src.rend(); it++) {
-              src_id = src_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              src_id = src_id * 256 + v;
             }
             for (auto it = dst.rbegin(); it != dst.rend(); it++) {
-              dst_id = dst_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              dst_id = dst_id * 256 + v;
             }
             src = std::to_string(src_id);
             dst = std::to_string(dst_id);
-            LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator point to edge. prefix: "
-                      << prefix_.data() << ", partId: " << partid << ", edgeKey {src: " << src
-                      << " edge type: " << edge_type << " ranking: " << ranking << " dst: " << dst
-                      << "}";
+            LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator point to edge. partId: "
+                      << partid << ", edgeKey {src: " << src << " edge type: " << edge_type
+                      << " ranking: " << ranking << " dst: " << dst << "}";
           }
         } else {
-          LOG(INFO)
-              << "[qy-profiling]-[RocksPrefixIter-create] iterator key not vertex or edge. prefix: "
-              << prefix_.data();
+          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator key not vertex or edge.";
         }
       } else {
-        LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator is invalid. prefix: "
-                  << prefix_.data();
+        LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator is invalid.";
       }
     }
   }
 
   ~RocksPrefixIter() {
-    LOG(INFO) << "[qy-profiling]-[RocksPrefixIter] vIdLen: " << vIdLen_;
+    LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] vIdLen: " << vIdLen_;
     if (vIdLen_ > 0) {
+      iter_->Prev();  // move to last key
       if (iter_->Valid()) {
-        iter_->Prev();  // move to last key
         auto key = this->key();
         if (NebulaKeyUtils::isTag(vIdLen_, key)) {
           auto partid = NebulaKeyUtils::getPart(key);
           auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
           auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
-          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator point to vertex. prefix: "
-                    << prefix_.data() << ", partid: " << partid << ", tagid: " << tag
-                    << ", vid: " << vid;
+          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator point to vertex. partid: "
+                    << partid << ", vid: " << vid << ", tagid: " << tag;
         } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
           auto partid = NebulaKeyUtils::getPart(key);
           auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
@@ -217,26 +217,24 @@ class RocksPrefixIter : public KVIterator {
           if (vIdLen_ == 8) {
             uint64_t src_id = 0, dst_id = 0;
             for (auto it = src.rbegin(); it != src.rend(); it++) {
-              src_id = src_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              src_id = src_id * 256 + v;
             }
             for (auto it = dst.rbegin(); it != dst.rend(); it++) {
-              dst_id = dst_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              dst_id = dst_id * 256 + v;
             }
             src = std::to_string(src_id);
             dst = std::to_string(dst_id);
-            LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator point to edge. prefix: "
-                      << prefix_.data() << ", partId: " << partid << ", edgeKey {src: " << src
-                      << " edge type: " << edge_type << " ranking: " << ranking << " dst: " << dst
-                      << "}";
+            LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator point to edge. partId: "
+                      << partid << ", edgeKey {src: " << src << " edge type: " << edge_type
+                      << " ranking: " << ranking << " dst: " << dst << "}";
           }
         } else {
-          LOG(INFO)
-              << "[qy-profiling]-[RocksPrefixIter-finish] iterator key not vertex or edge. prefix: "
-              << prefix_.data();
+          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator key not vertex or edge.";
         }
       } else {
-        LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator is invalid. prefix: "
-                  << prefix_.data();
+        LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator is invalid.";
       }
     }
   }
@@ -273,7 +271,7 @@ class RocksPrefixIter : public KVIterator {
 class RocksCommonIter : public KVIterator {
  public:
   explicit RocksCommonIter(rocksdb::Iterator* iter, size_t vIdLen) : iter_(iter), vIdLen_(vIdLen) {
-    LOG(INFO) << "[qy-profiling]-[RocksCommonIter] vIdLen: " << vIdLen_;
+    LOG(INFO) << "[qy-profiling]-[RocksCommonIter-create] vIdLen: " << vIdLen_;
     if (vIdLen_ > 0) {
       if (iter_->Valid()) {
         auto key = this->key();
@@ -292,10 +290,12 @@ class RocksCommonIter : public KVIterator {
           if (vIdLen_ == 8) {
             uint64_t src_id = 0, dst_id = 0;
             for (auto it = src.rbegin(); it != src.rend(); it++) {
-              src_id = src_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              src_id = src_id * 256 + v;
             }
             for (auto it = dst.rbegin(); it != dst.rend(); it++) {
-              dst_id = dst_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              dst_id = dst_id * 256 + v;
             }
             src = std::to_string(src_id);
             dst = std::to_string(dst_id);
@@ -313,10 +313,10 @@ class RocksCommonIter : public KVIterator {
   }
 
   ~RocksCommonIter() {
-    LOG(INFO) << "[qy-profiling]-[RocksCommonIter] vIdLen: " << vIdLen_;
+    LOG(INFO) << "[qy-profiling]-[RocksCommonIter-finish] vIdLen: " << vIdLen_;
     if (vIdLen_ > 0) {
+      iter_->Prev();  // move to last key
       if (iter_->Valid()) {
-        iter_->Prev();  // move to last key
         auto key = this->key();
         if (NebulaKeyUtils::isTag(vIdLen_, key)) {
           auto partid = NebulaKeyUtils::getPart(key);
@@ -333,10 +333,12 @@ class RocksCommonIter : public KVIterator {
           if (vIdLen_ == 8) {
             uint64_t src_id = 0, dst_id = 0;
             for (auto it = src.rbegin(); it != src.rend(); it++) {
-              src_id = src_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              src_id = src_id * 256 + v;
             }
             for (auto it = dst.rbegin(); it != dst.rend(); it++) {
-              dst_id = dst_id * 256 + *it;
+              uint8_t v = (uint8_t)(*it);
+              dst_id = dst_id * 256 + v;
             }
             src = std::to_string(src_id);
             dst = std::to_string(dst_id);

@@ -43,7 +43,8 @@ class GetNeighborsNode : public QueryNode<VertexID> {
       if (context_->isIntId()) {
         uint64_t id = 0;
         for (auto it = vId.rbegin(); it != vId.rend(); it++) {
-          id = id * 256 + *it;
+          uint8_t v = (uint8_t)(*it);
+          id = id * 256 + v;
         }
         LOG(INFO) << "[qy-profiling]-[GetNeighborsNode]: partId: " << partId << " vId: " << id;
       } else {
@@ -119,9 +120,12 @@ class GetNeighborsNode : public QueryNode<VertexID> {
       return nebula::cpp2::ErrorCode::SUCCEEDED;
     }
 
+    LOG(INFO) << "[qy-profiling]-[GetNeighborsNode-iterateEdges] start";
     for (auto& edge_name : edgeContext_->edgeNames_) {
+      auto id = edge_name.first;
       auto name = edge_name.second;
-      LOG(INFO) << "[qy-profiling]-[GetNeighborsNode]: edge type name: " << name;
+      LOG(INFO) << "[qy-profiling]-[GetNeighborsNode-iterateEdges]: edge type id: " << id
+                << " edge type name: " << name;
     }
 
     int64_t edgeRowCount = 0;

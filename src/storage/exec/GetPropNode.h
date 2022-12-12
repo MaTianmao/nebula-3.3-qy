@@ -40,8 +40,9 @@ class GetTagPropNode : public QueryNode<VertexID> {
       if (context_->isIntId()) {
         uint64_t id = 0;
         for (auto it = vId.rbegin(); it != vId.rend(); it++) {
-          // LOG(INFO) << "[qy-profiling]-[GetTagPropNode]: char: " << int(s);
-          id = id * 256 + *it;
+          uint8_t v = (uint8_t)(*it);
+          // LOG(INFO) << "[qy-profiling]-[GetTagPropNode]: uint8: " << v;
+          id = id * 256 + v;
         }
         LOG(INFO) << "[qy-profiling]-[GetTagPropNode]: partId: " << partId << " vId: " << id;
       } else {
@@ -79,7 +80,7 @@ class GetTagPropNode : public QueryNode<VertexID> {
         std::unique_ptr<kvstore::KVIterator> iter;
         auto tagPrefix = NebulaKeyUtils::tagPrefix(context_->vIdLen(), partId, vId);
         ret = context_->env()->kvstore_->prefix(
-            context_->spaceId(), partId, tagPrefix, &iter, context_->vIdLen());
+            context_->spaceId(), partId, tagPrefix, &iter, false, nullptr, context_->vIdLen());
         if (ret != nebula::cpp2::ErrorCode::SUCCEEDED) {
           return ret;
         } else if (!iter->valid()) {
@@ -206,10 +207,12 @@ class GetEdgePropNode : public QueryNode<cpp2::EdgeKey> {
         auto src_str = (*edgeKey.src_ref()).getStr();
         auto dst_str = (*edgeKey.dst_ref()).getStr();
         for (auto it = src_str.rbegin(); it != src_str.rend(); it++) {
-          src = src * 256 + *it;
+          uint8_t v = (uint8_t)(*it);
+          src = src * 256 + v;
         }
         for (auto it = dst_str.rbegin(); it != dst_str.rend(); it++) {
-          dst = dst * 256 + *it;
+          uint8_t v = (uint8_t)(*it);
+          dst = dst * 256 + v;
         }
         LOG(INFO) << "[qy-profiling]-[GetEdgePropNode]: partId: " << partId
                   << " edgeKey {src: " << src << " edge type: " << *edgeKey.edge_type_ref()
