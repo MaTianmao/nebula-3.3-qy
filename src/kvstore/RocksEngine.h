@@ -12,6 +12,7 @@
 #include <rocksdb/utilities/checkpoint.h>
 
 #include "common/base/Base.h"
+#include "common/utils/NebulaKeyUtils.h"
 #include "kvstore/KVEngine.h"
 #include "kvstore/KVIterator.h"
 #include "kvstore/RocksEngineConfig.h"
@@ -24,10 +25,97 @@ namespace kvstore {
  */
 class RocksRangeIter : public KVIterator {
  public:
-  RocksRangeIter(rocksdb::Iterator* iter, rocksdb::Slice start, rocksdb::Slice end)
-      : iter_(iter), start_(start), end_(end) {}
+  RocksRangeIter(rocksdb::Iterator* iter, rocksdb::Slice start, rocksdb::Slice end, size_t vIdLen)
+      : iter_(iter), start_(start), end_(end), vIdLen_(vIdLen) {
+    LOG(INFO) << "[qy-profiling]-[RocksRangeIter] vIdLen: " << vIdLen_;
+    if (vIdLen_ > 0) {
+      if (iter_->Valid()) {
+        auto key = this->key();
+        if (NebulaKeyUtils::isTag(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
+          auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
+          LOG(INFO) << "[qy-profiling]-[RocksRangeIter-create] iterator point to vertex. start: "
+                    << start_.data() << ", end: " << end_.data() << ", partid: " << partid
+                    << ", tagid: " << tag << ", vid: " << vid;
+        } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
+          auto dst = NebulaKeyUtils::getDstId(vIdLen_, key).toString();
+          auto edge_type = NebulaKeyUtils::getEdgeType(vIdLen_, key);
+          auto ranking = NebulaKeyUtils::getRank(vIdLen_, key);
+          if (vIdLen_ == 8) {
+            uint64_t src_id = 0, dst_id = 0;
+            for (auto it = src.rbegin(); it != src.rend(); it++) {
+              src_id = src_id * 256 + *it;
+            }
+            for (auto it = dst.rbegin(); it != dst.rend(); it++) {
+              dst_id = dst_id * 256 + *it;
+            }
+            src = std::to_string(src_id);
+            dst = std::to_string(dst_id);
+            LOG(INFO) << "[qy-profiling]-[RocksRangeIter-create] iterator point to edge. start: "
+                      << start_.data() << ", end: " << end_.data() << ", partId: " << partid
+                      << ", edgeKey {src: " << src << " edge type: " << edge_type
+                      << " ranking: " << ranking << " dst: " << dst << "}";
+          }
+        } else {
+          LOG(INFO)
+              << "[qy-profiling]-[RocksRangeIter-create] iterator key not vertex or edge. start: "
+              << start_.data() << ", end: " << end_.data();
+        }
+      } else {
+        LOG(INFO) << "[qy-profiling]-[RocksRangeIter-create] iterator is invalid. start: "
+                  << start_.data() << ", end: " << end_.data();
+      }
+    }
+  }
 
-  ~RocksRangeIter() = default;
+  ~RocksRangeIter() {
+    LOG(INFO) << "[qy-profiling]-[RocksRangeIter] vIdLen: " << vIdLen_;
+    if (vIdLen_ > 0) {
+      if (iter_->Valid()) {
+        iter_->Prev();  // move to last key
+        auto key = this->key();
+        if (NebulaKeyUtils::isTag(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
+          auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
+          LOG(INFO) << "[qy-profiling]-[RocksRangeIter-finish] iterator point to vertex. start: "
+                    << start_.data() << ", end: " << end_.data() << ", partid: " << partid
+                    << ", tagid: " << tag << ", vid: " << vid;
+        } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
+          auto dst = NebulaKeyUtils::getDstId(vIdLen_, key).toString();
+          auto edge_type = NebulaKeyUtils::getEdgeType(vIdLen_, key);
+          auto ranking = NebulaKeyUtils::getRank(vIdLen_, key);
+          if (vIdLen_ == 8) {
+            uint64_t src_id = 0, dst_id = 0;
+            for (auto it = src.rbegin(); it != src.rend(); it++) {
+              src_id = src_id * 256 + *it;
+            }
+            for (auto it = dst.rbegin(); it != dst.rend(); it++) {
+              dst_id = dst_id * 256 + *it;
+            }
+            src = std::to_string(src_id);
+            dst = std::to_string(dst_id);
+            LOG(INFO) << "[qy-profiling]-[RocksRangeIter-finish] iterator point to edge. start: "
+                      << start_.data() << ", end: " << end_.data() << ", partId: " << partid
+                      << ", edgeKey {src: " << src << " edge type: " << edge_type
+                      << " ranking: " << ranking << " dst: " << dst << "}";
+          }
+        } else {
+          LOG(INFO)
+              << "[qy-profiling]-[RocksRangeIter-finish] iterator key not vertex or edge. start: "
+              << start_.data() << ", end: " << end_.data();
+        }
+      } else {
+        LOG(INFO) << "[qy-profiling]-[RocksRangeIter-finish] iterator is invalid. start: "
+                  << start_.data() << ", end: " << end_.data();
+      }
+    }
+  }
 
   bool valid() const override {
     return !!iter_ && iter_->Valid() && (iter_->key().compare(end_) < 0);
@@ -53,6 +141,7 @@ class RocksRangeIter : public KVIterator {
   std::unique_ptr<rocksdb::Iterator> iter_;
   rocksdb::Slice start_;
   rocksdb::Slice end_;
+  size_t vIdLen_;
 };
 
 /**
@@ -60,9 +149,97 @@ class RocksRangeIter : public KVIterator {
  */
 class RocksPrefixIter : public KVIterator {
  public:
-  RocksPrefixIter(rocksdb::Iterator* iter, rocksdb::Slice prefix) : iter_(iter), prefix_(prefix) {}
+  RocksPrefixIter(rocksdb::Iterator* iter, rocksdb::Slice prefix, size_t vIdLen)
+      : iter_(iter), prefix_(prefix), vIdLen_(vIdLen) {
+    LOG(INFO) << "[qy-profiling]-[RocksPrefixIter] vIdLen: " << vIdLen_;
+    if (vIdLen_ > 0) {
+      if (iter_->Valid()) {
+        auto key = this->key();
+        if (NebulaKeyUtils::isTag(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
+          auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
+          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator point to vertex. prefix: "
+                    << prefix_.data() << ", partid: " << partid << ", tagid: " << tag
+                    << ", vid: " << vid;
+        } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
+          auto dst = NebulaKeyUtils::getDstId(vIdLen_, key).toString();
+          auto edge_type = NebulaKeyUtils::getEdgeType(vIdLen_, key);
+          auto ranking = NebulaKeyUtils::getRank(vIdLen_, key);
+          if (vIdLen_ == 8) {
+            uint64_t src_id = 0, dst_id = 0;
+            for (auto it = src.rbegin(); it != src.rend(); it++) {
+              src_id = src_id * 256 + *it;
+            }
+            for (auto it = dst.rbegin(); it != dst.rend(); it++) {
+              dst_id = dst_id * 256 + *it;
+            }
+            src = std::to_string(src_id);
+            dst = std::to_string(dst_id);
+            LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator point to edge. prefix: "
+                      << prefix_.data() << ", partId: " << partid << ", edgeKey {src: " << src
+                      << " edge type: " << edge_type << " ranking: " << ranking << " dst: " << dst
+                      << "}";
+          }
+        } else {
+          LOG(INFO)
+              << "[qy-profiling]-[RocksPrefixIter-create] iterator key not vertex or edge. prefix: "
+              << prefix_.data();
+        }
+      } else {
+        LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-create] iterator is invalid. prefix: "
+                  << prefix_.data();
+      }
+    }
+  }
 
-  ~RocksPrefixIter() = default;
+  ~RocksPrefixIter() {
+    LOG(INFO) << "[qy-profiling]-[RocksPrefixIter] vIdLen: " << vIdLen_;
+    if (vIdLen_ > 0) {
+      if (iter_->Valid()) {
+        iter_->Prev();  // move to last key
+        auto key = this->key();
+        if (NebulaKeyUtils::isTag(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
+          auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
+          LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator point to vertex. prefix: "
+                    << prefix_.data() << ", partid: " << partid << ", tagid: " << tag
+                    << ", vid: " << vid;
+        } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
+          auto dst = NebulaKeyUtils::getDstId(vIdLen_, key).toString();
+          auto edge_type = NebulaKeyUtils::getEdgeType(vIdLen_, key);
+          auto ranking = NebulaKeyUtils::getRank(vIdLen_, key);
+          if (vIdLen_ == 8) {
+            uint64_t src_id = 0, dst_id = 0;
+            for (auto it = src.rbegin(); it != src.rend(); it++) {
+              src_id = src_id * 256 + *it;
+            }
+            for (auto it = dst.rbegin(); it != dst.rend(); it++) {
+              dst_id = dst_id * 256 + *it;
+            }
+            src = std::to_string(src_id);
+            dst = std::to_string(dst_id);
+            LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator point to edge. prefix: "
+                      << prefix_.data() << ", partId: " << partid << ", edgeKey {src: " << src
+                      << " edge type: " << edge_type << " ranking: " << ranking << " dst: " << dst
+                      << "}";
+          }
+        } else {
+          LOG(INFO)
+              << "[qy-profiling]-[RocksPrefixIter-finish] iterator key not vertex or edge. prefix: "
+              << prefix_.data();
+        }
+      } else {
+        LOG(INFO) << "[qy-profiling]-[RocksPrefixIter-finish] iterator is invalid. prefix: "
+                  << prefix_.data();
+      }
+    }
+  }
 
   bool valid() const override {
     return !!iter_ && iter_->Valid() && (iter_->key().starts_with(prefix_));
@@ -87,6 +264,7 @@ class RocksPrefixIter : public KVIterator {
  protected:
   std::unique_ptr<rocksdb::Iterator> iter_;
   rocksdb::Slice prefix_;
+  size_t vIdLen_;
 };
 
 /**
@@ -94,9 +272,86 @@ class RocksPrefixIter : public KVIterator {
  */
 class RocksCommonIter : public KVIterator {
  public:
-  explicit RocksCommonIter(rocksdb::Iterator* iter) : iter_(iter) {}
+  explicit RocksCommonIter(rocksdb::Iterator* iter, size_t vIdLen) : iter_(iter), vIdLen_(vIdLen) {
+    LOG(INFO) << "[qy-profiling]-[RocksCommonIter] vIdLen: " << vIdLen_;
+    if (vIdLen_ > 0) {
+      if (iter_->Valid()) {
+        auto key = this->key();
+        if (NebulaKeyUtils::isTag(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
+          auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
+          LOG(INFO) << "[qy-profiling]-[RocksCommonIter-create] iterator point to vertex. partid: "
+                    << partid << ", tagid: " << tag << ", vid: " << vid;
+        } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
+          auto dst = NebulaKeyUtils::getDstId(vIdLen_, key).toString();
+          auto edge_type = NebulaKeyUtils::getEdgeType(vIdLen_, key);
+          auto ranking = NebulaKeyUtils::getRank(vIdLen_, key);
+          if (vIdLen_ == 8) {
+            uint64_t src_id = 0, dst_id = 0;
+            for (auto it = src.rbegin(); it != src.rend(); it++) {
+              src_id = src_id * 256 + *it;
+            }
+            for (auto it = dst.rbegin(); it != dst.rend(); it++) {
+              dst_id = dst_id * 256 + *it;
+            }
+            src = std::to_string(src_id);
+            dst = std::to_string(dst_id);
+            LOG(INFO) << "[qy-profiling]-[RocksCommonIter-create] iterator point to edge. partId: "
+                      << partid << ", edgeKey {src: " << src << " edge type: " << edge_type
+                      << " ranking: " << ranking << " dst: " << dst << "}";
+          }
+        } else {
+          LOG(INFO) << "[qy-profiling]-[RocksCommonIter-create] iterator key not vertex or edge.";
+        }
+      } else {
+        LOG(INFO) << "[qy-profiling]-[RocksCommonIter-create] iterator is invalid.";
+      }
+    }
+  }
 
-  ~RocksCommonIter() = default;
+  ~RocksCommonIter() {
+    LOG(INFO) << "[qy-profiling]-[RocksCommonIter] vIdLen: " << vIdLen_;
+    if (vIdLen_ > 0) {
+      if (iter_->Valid()) {
+        iter_->Prev();  // move to last key
+        auto key = this->key();
+        if (NebulaKeyUtils::isTag(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto tag = NebulaKeyUtils::getTagId(vIdLen_, key);
+          auto vid = NebulaKeyUtils::getVertexId(vIdLen_, key);
+          LOG(INFO) << "[qy-profiling]-[RocksCommonIter-finish] iterator point to vertex. partid: "
+                    << partid << ", tagid: " << tag << ", vid: " << vid;
+        } else if (NebulaKeyUtils::isEdge(vIdLen_, key)) {
+          auto partid = NebulaKeyUtils::getPart(key);
+          auto src = NebulaKeyUtils::getSrcId(vIdLen_, key).toString();
+          auto dst = NebulaKeyUtils::getDstId(vIdLen_, key).toString();
+          auto edge_type = NebulaKeyUtils::getEdgeType(vIdLen_, key);
+          auto ranking = NebulaKeyUtils::getRank(vIdLen_, key);
+          if (vIdLen_ == 8) {
+            uint64_t src_id = 0, dst_id = 0;
+            for (auto it = src.rbegin(); it != src.rend(); it++) {
+              src_id = src_id * 256 + *it;
+            }
+            for (auto it = dst.rbegin(); it != dst.rend(); it++) {
+              dst_id = dst_id * 256 + *it;
+            }
+            src = std::to_string(src_id);
+            dst = std::to_string(dst_id);
+            LOG(INFO) << "[qy-profiling]-[RocksCommonIter-finish] iterator point to edge. partId: "
+                      << partid << ", edgeKey {src: " << src << " edge type: " << edge_type
+                      << " ranking: " << ranking << " dst: " << dst << "}";
+          }
+        } else {
+          LOG(INFO) << "[qy-profiling]-[RocksCommonIter-finish] iterator key not vertex or edge.";
+        }
+      } else {
+        LOG(INFO) << "[qy-profiling]-[RocksCommonIter-finish] iterator is invalid.";
+      }
+    }
+  }
 
   bool valid() const override {
     return !!iter_ && iter_->Valid();
@@ -120,6 +375,7 @@ class RocksCommonIter : public KVIterator {
 
  protected:
   std::unique_ptr<rocksdb::Iterator> iter_;
+  size_t vIdLen_;
 };
 
 /***************************************
@@ -288,7 +544,8 @@ class RocksEngine : public KVEngine {
    */
   nebula::cpp2::ErrorCode range(const std::string& start,
                                 const std::string& end,
-                                std::unique_ptr<KVIterator>* iter) override;
+                                std::unique_ptr<KVIterator>* iter,
+                                const size_t vIdLen = 0) override;
 
   /**
    * @brief Get all results with 'prefix' str as prefix.
@@ -299,7 +556,8 @@ class RocksEngine : public KVEngine {
    */
   nebula::cpp2::ErrorCode prefix(const std::string& prefix,
                                  std::unique_ptr<KVIterator>* iter,
-                                 const void* snapshot = nullptr) override;
+                                 const void* snapshot = nullptr,
+                                 const size_t vIdLen = 0) override;
 
   /**
    * @brief Get all results with 'prefix' str as prefix starting form 'start'
@@ -311,7 +569,8 @@ class RocksEngine : public KVEngine {
    */
   nebula::cpp2::ErrorCode rangeWithPrefix(const std::string& start,
                                           const std::string& prefix,
-                                          std::unique_ptr<KVIterator>* iter) override;
+                                          std::unique_ptr<KVIterator>* iter,
+                                          const size_t vIdLen = 0) override;
 
   /**
    * @brief Prefix scan with prefix extractor
@@ -322,7 +581,8 @@ class RocksEngine : public KVEngine {
    */
   nebula::cpp2::ErrorCode prefixWithExtractor(const std::string& prefix,
                                               const void* snapshot,
-                                              std::unique_ptr<KVIterator>* storageIter);
+                                              std::unique_ptr<KVIterator>* storageIter,
+                                              const size_t vIdLen = 0);
 
   /**
    * @brief Prefix scan without prefix extractor, use total order seek
@@ -333,7 +593,8 @@ class RocksEngine : public KVEngine {
    */
   nebula::cpp2::ErrorCode prefixWithoutExtractor(const std::string& prefix,
                                                  const void* snapshot,
-                                                 std::unique_ptr<KVIterator>* storageIter);
+                                                 std::unique_ptr<KVIterator>* storageIter,
+                                                 const size_t vIdLen = 0);
 
   /**
    * @brief Scan all data in rocksdb
@@ -341,7 +602,7 @@ class RocksEngine : public KVEngine {
    * @param iter Iterator of rocksdb
    * @return nebula::cpp2::ErrorCode
    */
-  nebula::cpp2::ErrorCode scan(std::unique_ptr<KVIterator>* iter) override;
+  nebula::cpp2::ErrorCode scan(std::unique_ptr<KVIterator>* iter, const size_t vIdLen = 0) override;
 
   /*********************
    * Data modification

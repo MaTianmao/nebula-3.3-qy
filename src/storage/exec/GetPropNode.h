@@ -36,6 +36,19 @@ class GetTagPropNode : public QueryNode<VertexID> {
   }
 
   nebula::cpp2::ErrorCode doExecute(PartitionID partId, const VertexID& vId) override {
+    {  // profiling
+      if (context_->isIntId()) {
+        uint64_t id = 0;
+        for (auto it = vId.rbegin(); it != vId.rend(); it++) {
+          // LOG(INFO) << "[qy-profiling]-[GetTagPropNode]: char: " << int(s);
+          id = id * 256 + *it;
+        }
+        LOG(INFO) << "[qy-profiling]-[GetTagPropNode]: partId: " << partId << " vId: " << id;
+      } else {
+        LOG(INFO) << "[qy-profiling]-[GetTagPropNode]: partId: " << partId << " vId: " << vId;
+      }
+    }
+
     if (resultDataSet_->size() >= limit_) {
       return nebula::cpp2::ErrorCode::SUCCEEDED;
     }
@@ -65,7 +78,8 @@ class GetTagPropNode : public QueryNode<VertexID> {
         // check if vId has any valid tag by prefix scan
         std::unique_ptr<kvstore::KVIterator> iter;
         auto tagPrefix = NebulaKeyUtils::tagPrefix(context_->vIdLen(), partId, vId);
-        ret = context_->env()->kvstore_->prefix(context_->spaceId(), partId, tagPrefix, &iter);
+        ret = context_->env()->kvstore_->prefix(
+            context_->spaceId(), partId, tagPrefix, &iter, context_->vIdLen());
         if (ret != nebula::cpp2::ErrorCode::SUCCEEDED) {
           return ret;
         } else if (!iter->valid()) {
@@ -186,6 +200,29 @@ class GetEdgePropNode : public QueryNode<cpp2::EdgeKey> {
   }
 
   nebula::cpp2::ErrorCode doExecute(PartitionID partId, const cpp2::EdgeKey& edgeKey) override {
+    {  // profiling
+      if (context_->isIntId()) {
+        uint64_t src = 0, dst = 0;
+        auto src_str = (*edgeKey.src_ref()).getStr();
+        auto dst_str = (*edgeKey.dst_ref()).getStr();
+        for (auto it = src_str.rbegin(); it != src_str.rend(); it++) {
+          src = src * 256 + *it;
+        }
+        for (auto it = dst_str.rbegin(); it != dst_str.rend(); it++) {
+          dst = dst * 256 + *it;
+        }
+        LOG(INFO) << "[qy-profiling]-[GetEdgePropNode]: partId: " << partId
+                  << " edgeKey {src: " << src << " edge type: " << *edgeKey.edge_type_ref()
+                  << " ranking: " << *edgeKey.ranking_ref() << " dst: " << dst << "}";
+      } else {
+        LOG(INFO) << "[qy-profiling]-[GetEdgePropNode]: partId: " << partId
+                  << " edgeKey {src: " << (*edgeKey.src_ref()).getStr()
+                  << " edge type: " << *edgeKey.edge_type_ref()
+                  << " ranking: " << *edgeKey.ranking_ref()
+                  << " dst: " << (*edgeKey.dst_ref()).getStr() << "}";
+      }
+    }
+
     if (resultDataSet_->size() >= limit_) {
       return nebula::cpp2::ErrorCode::SUCCEEDED;
     }

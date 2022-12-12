@@ -26,6 +26,18 @@ class GetDstBySrcNode : public QueryNode<VertexID> {
   // need to override doExecute because the return format of GetNeighborsNode and
   // GetDstBySrcNode are different
   nebula::cpp2::ErrorCode doExecute(PartitionID partId, const VertexID& vId) override {
+    {  // profiling
+      if (context_->isIntId()) {
+        uint64_t id = 0;
+        for (auto it = vId.rbegin(); it != vId.rend(); it++) {
+          id = id * 256 + *it;
+        }
+        LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode]: partId: " << partId << " vId: " << id;
+      } else {
+        LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode]: partId: " << partId << " vId: " << vId;
+      }
+    }
+
     auto ret = RelNode::doExecute(partId, vId);
     if (ret != nebula::cpp2::ErrorCode::SUCCEEDED) {
       return ret;
@@ -44,6 +56,11 @@ class GetDstBySrcNode : public QueryNode<VertexID> {
 
  private:
   nebula::cpp2::ErrorCode iterateEdges() {
+    for (auto& edge_name : edgeContext_->edgeNames_) {
+      auto name = edge_name.second;
+      LOG(INFO) << "[qy-profiling]-[GetDstBySrcNode]: edge type name: " << name;
+    }
+
     for (; iter_->valid(); iter_->next()) {
       EdgeType type = iter_->edgeType();
       if (type != context_->edgeType_) {

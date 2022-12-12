@@ -420,14 +420,14 @@ void DbDumper::run() {
 void DbDumper::seekToFirst() {
   const auto it = db_->NewIterator(rocksdb::ReadOptions());
   it->SeekToFirst();
-  const auto prefixIt = std::make_unique<kvstore::RocksPrefixIter>(it, "");
+  const auto prefixIt = std::make_unique<kvstore::RocksPrefixIter>(it, "", 0);
   iterates(prefixIt.get());
 }
 
 void DbDumper::seek(std::string& prefix) {
   const auto it = db_->NewIterator(rocksdb::ReadOptions());
   it->Seek(rocksdb::Slice(prefix));
-  const auto prefixIt = std::make_unique<kvstore::RocksPrefixIter>(it, prefix);
+  const auto prefixIt = std::make_unique<kvstore::RocksPrefixIter>(it, prefix, 0);
   iterates(prefixIt.get());
 }
 

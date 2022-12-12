@@ -171,7 +171,8 @@ class KVStore {
                                         const std::string& start,
                                         const std::string& end,
                                         std::unique_ptr<KVIterator>* iter,
-                                        bool canReadFromFollower = false) = 0;
+                                        bool canReadFromFollower = false,
+                                        const size_t vIdLen = 0) = 0;
 
   /**
    * @brief To forbid to pass rvalue via the 'range' parameter.
@@ -181,7 +182,8 @@ class KVStore {
                                         std::string&& start,
                                         std::string&& end,
                                         std::unique_ptr<KVIterator>* iter,
-                                        bool canReadFromFollower = false) = delete;
+                                        bool canReadFromFollower = false,
+                                        const size_t vIdLen = 0) = delete;
 
   /**
    * @brief Get all results with 'prefix' str as prefix.
@@ -199,7 +201,8 @@ class KVStore {
                                          const std::string& prefix,
                                          std::unique_ptr<KVIterator>* iter,
                                          bool canReadFromFollower = false,
-                                         const void* snapshot = nullptr) = 0;
+                                         const void* snapshot = nullptr,
+                                         const size_t vIdLen = 0) = 0;
 
   /**
    * @brief To forbid to pass rvalue via the 'prefix' parameter.
@@ -209,7 +212,8 @@ class KVStore {
                                          std::string&& prefix,
                                          std::unique_ptr<KVIterator>* iter,
                                          bool canReadFromFollower = false,
-                                         const void* snapshot = nullptr) = delete;
+                                         const void* snapshot = nullptr,
+                                         const size_t vIdLen = 0) = delete;
 
   /**
    * @brief Get all results with 'prefix' str as prefix starting form 'start'
@@ -227,7 +231,8 @@ class KVStore {
                                                   const std::string& start,
                                                   const std::string& prefix,
                                                   std::unique_ptr<KVIterator>* iter,
-                                                  bool canReadFromFollower = false) = 0;
+                                                  bool canReadFromFollower = false,
+                                                  const size_t vIdLen = 0) = 0;
 
   /**
    * @brief To forbid to pass rvalue via the 'rangeWithPrefix' parameter.
@@ -237,7 +242,8 @@ class KVStore {
                                                   std::string&& start,
                                                   std::string&& prefix,
                                                   std::unique_ptr<KVIterator>* iter,
-                                                  bool canReadFromFollower = false) = delete;
+                                                  bool canReadFromFollower = false,
+                                                  const size_t vIdLen = 0) = delete;
 
   /**
    * @brief Synchronize the kvstore across multiple replica

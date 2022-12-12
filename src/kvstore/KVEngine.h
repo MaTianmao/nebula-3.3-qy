@@ -142,7 +142,8 @@ class KVEngine {
    */
   virtual nebula::cpp2::ErrorCode range(const std::string& start,
                                         const std::string& end,
-                                        std::unique_ptr<KVIterator>* iter) = 0;
+                                        std::unique_ptr<KVIterator>* iter,
+                                        const size_t vIdLen = 0) = 0;
 
   /**
    * @brief Get all results with 'prefix' str as prefix.
@@ -154,7 +155,8 @@ class KVEngine {
    */
   virtual nebula::cpp2::ErrorCode prefix(const std::string& prefix,
                                          std::unique_ptr<KVIterator>* iter,
-                                         const void* snapshot = nullptr) = 0;
+                                         const void* snapshot = nullptr,
+                                         const size_t vIdLen = 0) = 0;
 
   /**
    * @brief Get all results with 'prefix' str as prefix starting form 'start'
@@ -166,7 +168,8 @@ class KVEngine {
    */
   virtual nebula::cpp2::ErrorCode rangeWithPrefix(const std::string& start,
                                                   const std::string& prefix,
-                                                  std::unique_ptr<KVIterator>* iter) = 0;
+                                                  std::unique_ptr<KVIterator>* iter,
+                                                  const size_t vIdLen = 0) = 0;
 
   /**
    * @brief Scan all keys in kv engine
@@ -174,7 +177,8 @@ class KVEngine {
    * @param storageIter Iterator returns by kv engine
    * @return nebula::cpp2::ErrorCode
    */
-  virtual nebula::cpp2::ErrorCode scan(std::unique_ptr<KVIterator>* storageIter) = 0;
+  virtual nebula::cpp2::ErrorCode scan(std::unique_ptr<KVIterator>* storageIter,
+                                       const size_t vIdLen = 0) = 0;
 
   /**
    * @brief Write a single record

@@ -260,7 +260,8 @@ class NebulaStore : public KVStore, public Handler {
                                 const std::string& start,
                                 const std::string& end,
                                 std::unique_ptr<KVIterator>* iter,
-                                bool canReadFromFollower = false) override;
+                                bool canReadFromFollower = false,
+                                const size_t vIdLen = 0) override;
 
   /**
    * @brief To forbid to pass rvalue via the 'range' parameter.
@@ -270,7 +271,8 @@ class NebulaStore : public KVStore, public Handler {
                                 std::string&& start,
                                 std::string&& end,
                                 std::unique_ptr<KVIterator>* iter,
-                                bool canReadFromFollower = false) override = delete;
+                                bool canReadFromFollower = false,
+                                const size_t vIdLen = 0) override = delete;
 
   /**
    * @brief Get all results with 'prefix' str as prefix.
@@ -287,7 +289,8 @@ class NebulaStore : public KVStore, public Handler {
                                  const std::string& prefix,
                                  std::unique_ptr<KVIterator>* iter,
                                  bool canReadFromFollower = false,
-                                 const void* snapshot = nullptr) override;
+                                 const void* snapshot = nullptr,
+                                 const size_t vIdLen = 0) override;
 
   /**
    * @brief To forbid to pass rvalue via the 'prefix' parameter.
@@ -297,7 +300,8 @@ class NebulaStore : public KVStore, public Handler {
                                  std::string&& prefix,
                                  std::unique_ptr<KVIterator>* iter,
                                  bool canReadFromFollower = false,
-                                 const void* snapshot = nullptr) override = delete;
+                                 const void* snapshot = nullptr,
+                                 const size_t vIdLen = 0) override = delete;
 
   /**
    * @brief Get all results with 'prefix' str as prefix starting form 'start'
@@ -315,7 +319,8 @@ class NebulaStore : public KVStore, public Handler {
                                           const std::string& start,
                                           const std::string& prefix,
                                           std::unique_ptr<KVIterator>* iter,
-                                          bool canReadFromFollower = false) override;
+                                          bool canReadFromFollower = false,
+                                          const size_t vIdLen = 0) override;
 
   /**
    * @brief To forbid to pass rvalue via the 'rangeWithPrefix' parameter.
@@ -325,7 +330,8 @@ class NebulaStore : public KVStore, public Handler {
                                           std::string&& start,
                                           std::string&& prefix,
                                           std::unique_ptr<KVIterator>* iter,
-                                          bool canReadFromFollower = false) override = delete;
+                                          bool canReadFromFollower = false,
+                                          const size_t vIdLen = 0) override = delete;
 
   /**
    * @brief Synchronize the kvstore across multiple replica by add a empty log

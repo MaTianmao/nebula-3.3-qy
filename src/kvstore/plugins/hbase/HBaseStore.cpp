@@ -145,7 +145,8 @@ std::vector<KV> HBaseStore::decode(GraphSpaceID spaceId,
 ResultCode HBaseStore::range(GraphSpaceID spaceId,
                              const std::string& start,
                              const std::string& end,
-                             std::unique_ptr<KVIterator>* storageIter) {
+                             std::unique_ptr<KVIterator>* storageIter,
+                             const size_t vIdLen) {
   auto tableName = this->spaceIdToTableName(spaceId);
   std::vector<std::pair<std::string, KVMap>> dataList;
   auto startRowKey = this->getRowKey(start);
@@ -169,7 +170,8 @@ ResultCode HBaseStore::range(GraphSpaceID spaceId,
 
 ResultCode HBaseStore::prefix(GraphSpaceID spaceId,
                               const std::string& prefix,
-                              std::unique_ptr<KVIterator>* storageIter) {
+                              std::unique_ptr<KVIterator>* storageIter,
+                              const size_t vIdLen) {
   auto tableName = this->spaceIdToTableName(spaceId);
   std::string startRowKey, endRowKey;
   startRowKey.reserve(kMaxRowKeyLength);
@@ -192,7 +194,8 @@ ResultCode HBaseStore::rangeWithPrefix(GraphSpaceID spaceId,
                                        const std::string& start,
                                        const std::string& prefix,
                                        std::unique_ptr<KVIterator>* storageIter,
-                                       bool canReadFromFollower) {
+                                       bool canReadFromFollower,
+                                       const size_t vIdLen) {
   UNUSED(partId);
   UNUSED(canReadFromFollower);
   auto tableName = this->spaceIdToTableName(spaceId);

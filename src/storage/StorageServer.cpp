@@ -280,6 +280,8 @@ bool StorageServer::start() {
     }
     serverStatus_ = STATUS_RUNNING;
   }
+
+  LOG(INFO) << "NebulaGraph-3.3-QY storage start!";
   return true;
 }
 

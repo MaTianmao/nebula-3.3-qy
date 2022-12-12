@@ -39,6 +39,18 @@ class GetNeighborsNode : public QueryNode<VertexID> {
   }
 
   nebula::cpp2::ErrorCode doExecute(PartitionID partId, const VertexID& vId) override {
+    {
+      if (context_->isIntId()) {
+        uint64_t id = 0;
+        for (auto it = vId.rbegin(); it != vId.rend(); it++) {
+          id = id * 256 + *it;
+        }
+        LOG(INFO) << "[qy-profiling]-[GetNeighborsNode]: partId: " << partId << " vId: " << id;
+      } else {
+        LOG(INFO) << "[qy-profiling]-[GetNeighborsNode]: partId: " << partId << " vId: " << vId;
+      }
+    }
+
     auto ret = RelNode::doExecute(partId, vId);
     if (ret != nebula::cpp2::ErrorCode::SUCCEEDED) {
       return ret;
@@ -106,6 +118,12 @@ class GetNeighborsNode : public QueryNode<VertexID> {
     if (edgeContext_->propContexts_.empty()) {
       return nebula::cpp2::ErrorCode::SUCCEEDED;
     }
+
+    for (auto& edge_name : edgeContext_->edgeNames_) {
+      auto name = edge_name.second;
+      LOG(INFO) << "[qy-profiling]-[GetNeighborsNode]: edge type name: " << name;
+    }
+
     int64_t edgeRowCount = 0;
     nebula::List list;
     for (; upstream_->valid(); upstream_->next(), ++edgeRowCount) {

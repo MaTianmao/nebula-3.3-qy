@@ -125,7 +125,9 @@ class MockKVStore : public ::nebula::kvstore::KVStore {
                                 const std::string& start,
                                 const std::string& end,
                                 std::unique_ptr<KVIterator>* iter,
-                                bool) override {
+                                bool,
+                                const size_t vIdLen = 0) override {
+    UNUSED(vIdLen);
     CHECK_EQ(spaceId, spaceId_);
     std::unique_ptr<MockKVIterator> mockIter;
     mockIter = std::make_unique<MockKVIterator>(kv_, kv_.lower_bound(start));
@@ -139,7 +141,9 @@ class MockKVStore : public ::nebula::kvstore::KVStore {
                                  const std::string& prefix,
                                  std::unique_ptr<KVIterator>* iter,
                                  bool canReadFromFollower = false,
-                                 const void* snapshot = nullptr) override {
+                                 const void* snapshot = nullptr,
+                                 const size_t vIdLen = 0) override {
+    UNUSED(vIdLen);
     UNUSED(canReadFromFollower);
     UNUSED(spaceId);
     UNUSED(partId);
@@ -167,7 +171,9 @@ class MockKVStore : public ::nebula::kvstore::KVStore {
                                           const std::string& start,
                                           const std::string& prefix,
                                           std::unique_ptr<KVIterator>* iter,
-                                          bool canReadFromFollower = false) override {
+                                          bool canReadFromFollower = false,
+                                          const size_t vIdLen = 0) override {
+    UNUSED(vIdLen);
     UNUSED(canReadFromFollower);
     UNUSED(spaceId);
     UNUSED(partId);

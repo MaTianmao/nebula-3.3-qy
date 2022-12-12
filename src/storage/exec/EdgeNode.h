@@ -219,7 +219,8 @@ class SingleEdgeNode final : public EdgeNode<VertexID> {
             << ", prop size " << props_->size();
     std::unique_ptr<kvstore::KVIterator> iter;
     prefix_ = NebulaKeyUtils::edgePrefix(context_->vIdLen(), partId, vId, edgeType_);
-    ret = context_->env()->kvstore_->prefix(context_->spaceId(), partId, prefix_, &iter);
+    ret = context_->env()->kvstore_->prefix(
+        context_->spaceId(), partId, prefix_, &iter, context_->vIdLen());
     if (ret == nebula::cpp2::ErrorCode::SUCCEEDED && iter && iter->valid()) {
       iter_.reset(new SingleEdgeIterator(context_, std::move(iter), edgeType_, schemas_, &ttl_));
     } else {

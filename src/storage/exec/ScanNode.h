@@ -56,6 +56,11 @@ class ScanVertexPropNode : public QueryNode<Cursor> {
   }
 
   nebula::cpp2::ErrorCode doExecute(PartitionID partId, const Cursor& cursor) override {
+    {  // profiling
+      LOG(INFO) << "[qy-profiling]-[ScanVertexPropNode]: partId: " << partId
+                << ", scan prefix should be equal to partId + kTag";
+    }
+
     auto ret = RelNode::doExecute(partId);
     if (ret != nebula::cpp2::ErrorCode::SUCCEEDED) {
       return ret;
@@ -70,8 +75,13 @@ class ScanVertexPropNode : public QueryNode<Cursor> {
     }
 
     std::unique_ptr<kvstore::KVIterator> iter;
-    auto kvRet = context_->env()->kvstore_->rangeWithPrefix(
-        context_->planContext_->spaceId_, partId, start, prefix, &iter, enableReadFollower_);
+    auto kvRet = context_->env()->kvstore_->rangeWithPrefix(context_->planContext_->spaceId_,
+                                                            partId,
+                                                            start,
+                                                            prefix,
+                                                            &iter,
+                                                            enableReadFollower_,
+                                                            context_->vIdLen());
     if (kvRet != nebula::cpp2::ErrorCode::SUCCEEDED) {
       return kvRet;
     }
@@ -230,6 +240,11 @@ class ScanEdgePropNode : public QueryNode<Cursor> {
   }
 
   nebula::cpp2::ErrorCode doExecute(PartitionID partId, const Cursor& cursor) override {
+    {  // profiling
+      LOG(INFO) << "[qy-profiling]-[ScanEdgePropNode]: partId: " << partId
+                << ", scan prefix should be equal to partId + kEdge";
+    }
+
     auto ret = RelNode::doExecute(partId);
     if (ret != nebula::cpp2::ErrorCode::SUCCEEDED) {
       return ret;
@@ -245,7 +260,7 @@ class ScanEdgePropNode : public QueryNode<Cursor> {
 
     std::unique_ptr<kvstore::KVIterator> iter;
     auto kvRet = context_->env()->kvstore_->rangeWithPrefix(
-        context_->spaceId(), partId, start, prefix, &iter, enableReadFollower_);
+        context_->spaceId(), partId, start, prefix, &iter, enableReadFollower_, context_->vIdLen());
     if (kvRet != nebula::cpp2::ErrorCode::SUCCEEDED) {
       return kvRet;
     }
